@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Промышленная безопасность</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --card: #1a1a2e;
+      --border: #2a2a4a;
+      --text: #e8e8f0;
+      --dim: #8888aa;
+      --green: #4caf50;
+      --green-bg: #0d2a10;
+      --green-pale: #81c784;
+      --green-pale-bg: #142018;
+      --red: #ef5350;
+      --red-bg: #2a0d0d;
+      --blue: #1976d2;
+      --progress-bg: #252540;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--card);
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .header-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.3px;
+    }
+    .session-stat {
+      font-size: 11px;
+      color: var(--dim);
+      background: var(--progress-bg);
+      padding: 2px 8px;
+      border-radius: 8px;
+    }
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .progress-bar-outer {
+      flex: 1;
+      height: 7px;
+      background: var(--progress-bg);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #388e3c, #66bb6a);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+    .progress-pct {
+      font-size: 12px;
+      font-weight: 600;
+      color: #66bb6a;
+      min-width: 36px;
+      text-align: right;
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      margin-top: 7px;
+    }
+    .chip {
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 9px;
+      background: var(--progress-bg);
+      color: var(--dim);
+    }
+    .chip.green { background: #0d2a10; color: #81c784; }
+    .chip.blue  { background: #0d1e3a; color: #64b5f6; }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      padding: 14px 14px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── QUESTION CARD ── */
+    .q-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid var(--border);
+    }
+    .q-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .q-label {
+      font-size: 11px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .streak-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .sdot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--progress-bg);
+      border: 1.5px solid var(--border);
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .sdot.on { background: #66bb6a; border-color: #66bb6a; }
+    .q-text {
+      font-size: 15px;
+      line-height: 1.55;
+      font-weight: 500;
+    }
+
+    /* ── OPTIONS ── */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .opt {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 14px;
+      border-radius: 11px;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      transition: border-color 0.18s, background 0.18s, transform 0.1s;
+      text-align: left;
+      width: 100%;
+    }
+    .opt:not(.locked):hover { border-color: #4a9eff; background: #0d2040; }
+    .opt:active:not(.locked) { transform: scale(0.98); }
+    .opt-letter {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--progress-bg);
+      color: var(--dim);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      margin-top: 1px;
+    }
+    .opt-text {
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+    .opt.locked { cursor: default; pointer-events: none; }
+
+    /* answer states */
+    .opt.correct { border-color: var(--green); background: var(--green-bg); }
+    .opt.correct .opt-letter { background: var(--green); color: #fff; }
+    .opt.correct .opt-text { color: #a5d6a7; }
+
+    .opt.pale { border-color: #558b2f; background: var(--green-pale-bg); }
+    .opt.pale .opt-letter { background: #558b2f; color: #dcedc8; }
+    .opt.pale .opt-text { color: #c5e1a5; }
+
+    .opt.wrong { border-color: var(--red); background: var(--red-bg); }
+    .opt.wrong .opt-letter { background: var(--red); color: #fff; }
+    .opt.wrong .opt-text { color: #ef9a9a; }
+
+    /* ── RESULT ── */
+    .result {
+      display: none;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .result.ok  { display: block; background: var(--green-bg); color: #81c784; border: 1px solid #2e5c2e; }
+    .result.bad { display: block; background: var(--red-bg);   color: #ef9a9a; border: 1px solid #5c2e2e; }
+
+    /* ── EXPLANATION ── */
+    .expl {
+      display: none;
+      background: #0a1f0d;
+      border: 1px solid #2e5c2e;
+      border-radius: 11px;
+      padding: 13px 15px;
+    }
+    .expl.show { display: block; }
+    .expl-head {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #66bb6a;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .expl-body {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #a5d6a7;
+      white-space: pre-wrap;
+    }
+
+    /* ── NEXT BTN ── */
+    .btn-next {
+      display: none;
+      width: 100%;
+      padding: 15px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #1565c0 0%, #1e88e5 100%);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-next.show { display: block; }
+    .btn-next:active { transform: scale(0.98); opacity: 0.92; }
+
+    /* ── FINISH ── */
+    .finish {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      padding: 48px 20px;
+      text-align: center;
+      flex: 1;
+    }
+    .finish.show { display: flex; }
+    .finish-icon { font-size: 72px; }
+    .finish-title { font-size: 26px; font-weight: 800; }
+    .finish-sub { font-size: 15px; color: var(--dim); line-height: 1.6; }
+    .btn-restart {
+      padding: 14px 36px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #1565c0, #1e88e5);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      color: var(--dim);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="header-title">Промышленная безопасность</div>
+    <div class="session-stat" id="sessionStat">0 из 0 верно</div>
+  </div>
+  <div class="progress-row">
+    <div class="progress-bar-outer">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-pct" id="progressPct">0%</div>
+  </div>
+  <div class="chips">
+    <div class="chip green" id="chipLearned">Изучено: 0 / 0</div>
+    <div class="chip blue"  id="chipQueue">В очереди: 0</div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div>Загрузка вопросов…</div>
+</div>
+
+<!-- MAIN QUIZ -->
+<div class="main" id="quiz" style="display:none">
+  <div class="q-card">
+    <div class="q-meta">
+      <div class="q-label" id="qLabel">Вопрос</div>
+      <div class="streak-dots">
+        <div class="sdot" id="sd0"></div>
+        <div class="sdot" id="sd1"></div>
+      </div>
+    </div>
+    <div class="q-text" id="qText"></div>
+  </div>
+
+  <div class="options" id="options"></div>
+
+  <div class="result" id="result"></div>
+
+  <div class="expl" id="expl">
+    <div class="expl-head">Пояснение</div>
+    <div class="expl-body" id="explBody"></div>
+  </div>
+
+  <button class="btn-next" id="btnNext" onclick="next()">Следующий вопрос →</button>
+</div>
+
+<!-- FINISH -->
+<div class="finish" id="finish">
+  <div class="finish-icon">🎉</div>
+  <div class="finish-title">Готово!</div>
+  <div class="finish-sub" id="finishSub"></div>
+  <button class="btn-restart" onclick="restart()">Начать заново</button>
+</div>
+
+<script>
+const STREAK = 2;
+const LETTERS = ['А','Б','В','Г','Д','Е'];
+
+let QUESTIONS = [];
+let state = {};   // id → { streak, learned }
+let queue = [];
+let qPos = 0;
+let cur = null;
+let answered = false;
+let sCorrect = 0, sTotal = 0;
+
+/* ── helpers ── */
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+function learnedCount() {
+  return Object.values(state).filter(s => s.learned).length;
+}
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── init ── */
+function initState() {
+  state = {};
+  QUESTIONS.forEach(q => { state[q.id] = { streak: 0, learned: false }; });
+  buildQueue();
+}
+function buildQueue() {
+  const unlearned = QUESTIONS.filter(q => !state[q.id].learned);
+  queue = shuffle(unlearned).map(q => q.id);
+  qPos = 0;
+}
+
+/* ── render ── */
+function showQuestion() {
+  if (queue.length === 0) { showFinish(); return; }
+  if (qPos >= queue.length) { buildQueue(); if (!queue.length) { showFinish(); return; } }
+
+  cur = QUESTIONS.find(q => q.id === queue[qPos]);
+  answered = false;
+  const learned = learnedCount();
+  const streak = state[cur.id].streak;
+
+  document.getElementById('qLabel').textContent =
+    `Вопрос ${qPos + 1} / ${queue.length} (осталось изучить ${QUESTIONS.length - learned})`;
+  document.getElementById('qText').textContent = cur.question;
+  document.getElementById('sd0').className = 'sdot' + (streak >= 1 ? ' on' : '');
+  document.getElementById('sd1').className = 'sdot' + (streak >= 2 ? ' on' : '');
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  cur.options.forEach((txt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML =
+      `<span class="opt-letter">${LETTERS[i]}</span>` +
+      `<span class="opt-text">${esc(txt)}</span>`;
+    btn.onclick = () => pick(i);
+    opts.appendChild(btn);
+  });
+
+  document.getElementById('result').className = 'result';
+  document.getElementById('expl').className = 'expl';
+  document.getElementById('btnNext').className = 'btn-next';
+  updateHeader();
+}
+
+function pick(idx) {
+  if (answered) return;
+  answered = true;
+  sTotal++;
+
+  const ok = idx === cur.correctIndex;
+  const btns = document.querySelectorAll('.opt');
+  btns.forEach(b => b.classList.add('locked'));
+
+  if (ok) {
+    btns[idx].classList.add('correct');
+    state[cur.id].streak = Math.min(state[cur.id].streak + 1, STREAK);
+    if (state[cur.id].streak >= STREAK) state[cur.id].learned = true;
+    sCorrect++;
+    const res = document.getElementById('result');
+    res.className = 'result ok';
+    res.textContent = state[cur.id].learned
+      ? '✓ Правильно! Вопрос изучен ✓'
+      : `✓ Правильно! Ещё ${STREAK - state[cur.id].streak} раз для изучения`;
+  } else {
+    btns[idx].classList.add('wrong');
+    btns[cur.correctIndex].classList.add('pale');
+    state[cur.id].streak = 0;
+    const res = document.getElementById('result');
+    res.className = 'result bad';
+    res.textContent = '✗ Неверно — правильный ответ выделен';
+    document.getElementById('explBody').textContent = cur.explanation;
+    document.getElementById('expl').className = 'expl show';
+  }
+
+  // update streak dots after answering
+  const streak = state[cur.id].streak;
+  document.getElementById('sd0').className = 'sdot' + (streak >= 1 ? ' on' : '');
+  document.getElementById('sd1').className = 'sdot' + (streak >= 2 ? ' on' : '');
+
+  document.getElementById('btnNext').className = 'btn-next show';
+  updateHeader();
+}
+
+function next() {
+  if (state[cur.id].learned) {
+    queue.splice(qPos, 1);
+  } else {
+    qPos++;
+  }
+  showQuestion();
+}
+
+function updateHeader() {
+  const learned = learnedCount();
+  const total = QUESTIONS.length;
+  const pct = total ? Math.round(learned / total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('chipLearned').textContent = `Изучено: ${learned} / ${total}`;
+  document.getElementById('chipQueue').textContent = `В очереди: ${queue.length - (state[cur?.id]?.learned ? 0 : 0)}`;
+  const acc = sTotal ? Math.round(sCorrect / sTotal * 100) : 0;
+  document.getElementById('sessionStat').textContent = `${sCorrect} / ${sTotal} верно (${acc}%)`;
+}
+
+function showFinish() {
+  document.getElementById('quiz').style.display = 'none';
+  const f = document.getElementById('finish');
+  f.className = 'finish show';
+  const acc = sTotal ? Math.round(sCorrect / sTotal * 100) : 0;
+  document.getElementById('finishSub').textContent =
+    `Вы изучили все ${QUESTIONS.length} вопросов!\nТочность за сессию: ${sCorrect} из ${sTotal} (${acc}%)`;
+}
+
+function restart() {
+  sCorrect = 0; sTotal = 0;
+  initState();
+  document.getElementById('finish').className = 'finish';
+  document.getElementById('quiz').style.display = '';
+  showQuestion();
+}
+
+/* ── Telegram Web App ── */
+if (window.Telegram?.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+}
+
+/* ── load data ── */
+fetch('questions.json')
+  .then(r => r.json())
+  .then(data => {
+    QUESTIONS = data;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('quiz').style.display = '';
+    initState();
+    showQuestion();
+  })
+  .catch(err => {
+    document.getElementById('loading').innerHTML =
+      `<div style="color:#ef5350;padding:20px;text-align:center">
+        Ошибка загрузки вопросов:<br>${err.message}
+      </div>`;
+  });
+</script>
+</body>
+</html>
