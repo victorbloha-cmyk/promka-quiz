@@ -420,7 +420,7 @@ function showCourseSelect() {
 function renderCourseList() {
   const list = document.getElementById('courseList');
   list.innerHTML = '';
-  COURSES.forEach(course => {
+  VISIBLE_COURSES.forEach(course => {
     const prog = getCourseProgress(course.id);
     const pct = prog.total ? Math.round(prog.learned / prog.total * 100) : 0;
     const qTotal = allCoursesData[course.id] ? allCoursesData[course.id].length : prog.total || '…';
@@ -680,14 +680,38 @@ function confirmReset() {
 if (window.Telegram?.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
 
 // ── Start ──────────────────────────────────────────────────────────────────
-// Предзагружаем все курсы в фоне для отображения прогресса на экране выбора
+const params = new URLSearchParams(location.search);
+const coursesParam = params.get('courses');  // "promka,gaz" или null
+const allowedIds = coursesParam ? coursesParam.split(',').filter(Boolean) : null;
+
+// Фильтруем список курсов по разрешённым
+const VISIBLE_COURSES = allowedIds
+  ? COURSES.filter(c => allowedIds.includes(c.id))
+  : COURSES;  // null = показать все (для локального теста)
+
+// Предзагружаем все видимые курсы в фоне
 Promise.allSettled(
-  COURSES.map(c => fetch(c.file).then(r => r.json()).then(d => { allCoursesData[c.id] = d; }))
+  VISIBLE_COURSES.map(c => fetch(c.file).then(r => r.json()).then(d => { allCoursesData[c.id] = d; }))
 ).then(() => {
   document.getElementById('loading').style.display = 'none';
-  const params = new URLSearchParams(location.search);
-  const courseParam = params.get('course');
-  const course = COURSES.find(c => c.id === courseParam);
+
+  if (VISIBLE_COURSES.length === 0) {
+    // Нет доступных курсов
+    document.getElementById('loading').style.display = '';
+    document.getElementById('loading').innerHTML =
+      `<div style="text-align:center;padding:30px">
+        <div style="font-size:48px;margin-bottom:16px">🔒</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:8px">Нет доступных курсов</div>
+        <div style="color:var(--dim);font-size:14px">Обратитесь к администратору<br>для получения доступа</div>
+      </div>`;
+    return;
+  }
+
+  // Если курс указан напрямую в URL (?course=promka) или только один курс — открываем сразу
+  const directCourse = params.get('course');
+  const course = VISIBLE_COURSES.find(c => c.id === directCourse)
+              || (VISIBLE_COURSES.length === 1 ? VISIBLE_COURSES[0] : null);
+
   if (course) {
     selectCourse(course);
     if (params.get('view') === 'stats') setTimeout(showStats, 100);
