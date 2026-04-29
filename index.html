@@ -189,6 +189,38 @@
     .btn-back { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; }
     .btn-reset { width: 100%; padding: 12px; border-radius: 12px; border: none; background: #2a0d0d; color: #ef9a9a; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #5c2e2e; }
 
+    /* ── LEARNED LIST ── */
+    .learned-screen { display: none; flex-direction: column; max-width: 600px; margin: 0 auto; width: 100%; padding: 14px 14px 24px; gap: 12px; }
+    .learned-screen.show { display: flex; }
+    .learned-header { display: flex; justify-content: space-between; align-items: center; }
+    .learned-title { font-size: 18px; font-weight: 800; }
+    .learned-count { font-size: 13px; color: #66bb6a; background: #0d2a10; padding: 3px 10px; border-radius: 9px; }
+    .learned-search {
+      width: 100%; padding: 10px 14px; border-radius: 10px;
+      border: 1.5px solid var(--border); background: var(--card);
+      color: var(--text); font-size: 14px; outline: none;
+    }
+    .learned-search:focus { border-color: #4a9eff; }
+    .learned-search::placeholder { color: var(--dim); }
+    .learned-list { display: flex; flex-direction: column; gap: 10px; }
+    .learned-item {
+      background: var(--card); border: 1px solid #2e5c2e;
+      border-radius: 12px; padding: 14px 16px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .learned-item:hover { background: #0d2a10; }
+    .learned-item.open { background: #0d2a10; }
+    .learned-q { font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--text); }
+    .learned-a {
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid #2e5c2e; display: none;
+    }
+    .learned-item.open .learned-a { display: block; }
+    .learned-a-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #66bb6a; margin-bottom: 5px; }
+    .learned-a-text { font-size: 14px; color: #a5d6a7; line-height: 1.45; }
+    .learned-expl { margin-top: 8px; font-size: 12px; color: var(--dim); line-height: 1.5; white-space: pre-wrap; }
+    .learned-empty { text-align: center; padding: 40px 20px; color: var(--dim); font-size: 15px; }
+
     /* ── LOADING ── */
     .loading { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; color: var(--dim); }
     .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -203,6 +235,7 @@
     <div class="header-title" id="headerTitle">Тренажёр</div>
     <div class="header-btns">
       <button class="icon-btn" id="sessionStatBtn" style="display:none">0/0</button>
+      <button class="icon-btn" id="btnLearned" onclick="showLearned()" style="display:none">✅ Изученные</button>
       <button class="icon-btn" id="btnStats" onclick="showStats()" style="display:none">📊</button>
       <button class="icon-btn" id="btnCourses" onclick="goToCourses()" style="display:none">← Курсы</button>
     </div>
@@ -305,6 +338,17 @@
   </div>
   <button class="btn-back" onclick="closeStats()">← Продолжить обучение</button>
   <button class="btn-reset" onclick="confirmReset()">Сбросить прогресс курса</button>
+</div>
+
+<!-- ИЗУЧЕННЫЕ ВОПРОСЫ -->
+<div class="learned-screen" id="learnedScreen">
+  <div class="learned-header">
+    <div class="learned-title">✅ Изученные вопросы</div>
+    <div class="learned-count" id="learnedCount">0</div>
+  </div>
+  <input class="learned-search" id="learnedSearch" placeholder="Поиск по вопросам…" oninput="filterLearned(this.value)">
+  <div class="learned-list" id="learnedList"></div>
+  <button class="btn-back" onclick="closeLearned()">← Продолжить обучение</button>
 </div>
 
 <script>
@@ -411,6 +455,7 @@ function showCourseSelect() {
   document.getElementById('progressRow').style.display = 'none';
   document.getElementById('chipsRow').style.display = 'none';
   document.getElementById('sessionStatBtn').style.display = 'none';
+  document.getElementById('btnLearned').style.display = 'none';
   document.getElementById('btnStats').style.display = 'none';
   document.getElementById('btnCourses').style.display = 'none';
 
@@ -482,6 +527,7 @@ function startCourse(data) {
   document.getElementById('progressRow').style.display = '';
   document.getElementById('chipsRow').style.display = '';
   document.getElementById('sessionStatBtn').style.display = '';
+  document.getElementById('btnLearned').style.display = '';
   document.getElementById('btnStats').style.display = '';
   document.getElementById('btnCourses').style.display = '';
 
@@ -656,6 +702,64 @@ function showStats() {
 
 function closeStats() {
   document.getElementById('statsScreen').className = 'stats-screen';
+  if (learnedCount() < QUESTIONS.length) {
+    document.getElementById('quiz').style.display = '';
+    showQuestion();
+  } else {
+    document.getElementById('finish').className = 'finish show';
+  }
+}
+
+// ── Изученные вопросы ──────────────────────────────────────────────────────
+function showLearned() {
+  document.getElementById('quiz').style.display = 'none';
+  document.getElementById('finish').className = 'finish';
+  document.getElementById('statsScreen').className = 'stats-screen';
+  document.getElementById('learnedScreen').className = 'learned-screen show';
+  document.getElementById('learnedSearch').value = '';
+
+  const learned = QUESTIONS.filter(q => state[q.id]?.learned);
+  document.getElementById('learnedCount').textContent = learned.length;
+  renderLearnedList(learned);
+}
+
+function renderLearnedList(questions) {
+  const list = document.getElementById('learnedList');
+  if (questions.length === 0) {
+    list.innerHTML = '<div class="learned-empty">Ничего не найдено</div>';
+    return;
+  }
+  list.innerHTML = '';
+  questions.forEach((q, idx) => {
+    const item = document.createElement('div');
+    item.className = 'learned-item';
+    item.dataset.idx = idx;
+    const correctAnswer = q.options[q.correctIndex];
+    item.innerHTML = `
+      <div class="learned-q">${esc(q.question)}</div>
+      <div class="learned-a">
+        <div class="learned-a-label">Правильный ответ</div>
+        <div class="learned-a-text">${esc(correctAnswer)}</div>
+        ${q.explanation ? `<div class="learned-expl">${esc(q.explanation)}</div>` : ''}
+      </div>
+    `;
+    item.onclick = () => item.classList.toggle('open');
+    list.appendChild(item);
+  });
+}
+
+function filterLearned(query) {
+  const learned = QUESTIONS.filter(q => state[q.id]?.learned);
+  const q = query.trim().toLowerCase();
+  const filtered = q ? learned.filter(q2 =>
+    q2.question.toLowerCase().includes(q) ||
+    q2.options[q2.correctIndex].toLowerCase().includes(q)
+  ) : learned;
+  renderLearnedList(filtered);
+}
+
+function closeLearned() {
+  document.getElementById('learnedScreen').className = 'learned-screen';
   if (learnedCount() < QUESTIONS.length) {
     document.getElementById('quiz').style.display = '';
     showQuestion();
